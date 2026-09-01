@@ -10,6 +10,8 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 
 ---
 
+<img width="492" height="720" alt="copyninja" src="https://github.com/user-attachments/assets/c3d2b615-5281-4b42-ba46-6ab4c51d1fe7" />
+
 ## Features
 
 - **Menu Bar Popover** — a 360pt single-screen panel with Maccy-style two-line previews, `MM-dd HH:mm:ss` timestamps, and live search filtering. Transient popover: closes on Esc or outside click.
