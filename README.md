@@ -23,6 +23,7 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 - **Persistence** — history (max 500 entries) is stored under `~/Library/Application Support/CopyNinja/`. Originals and thumbnails live as separate files so scrolling stays smooth (`NSCache` on top).
 - **Clear All** — `⌘K` or `⌘⇧⌫` wipes in-memory history, on-disk storage, and the system clipboard in one stroke.
 - **Update Check** — queries the GitHub Releases API and offers a one-click link to the newest release.
+- **Launch at Login** — a toggle in the shuriken's right-click menu or the popover footer registers the app with Apple's modern `SMAppService`, so CopyNinja starts automatically after a reboot. No helper binaries, no launch daemons.
 - **Tiny & Private** — a single self-contained binary. No third-party dependencies, no analytics, no tracking. Everything happens on your Mac.
 
 ## Requirements
@@ -57,7 +58,7 @@ Or grab the latest `CopyNinja-<version>.zip` from [Releases](https://github.com/
 | `Space` | Quick Look preview of the selected item |
 | Type in the search bar | Live filter the history |
 | `⌘K` / `⌘⇧⌫` | Clear all (memory + disk + clipboard) |
-| Right-click the shuriken | Quick menu: show / check updates / clear / quit |
+| Right-click the shuriken | Quick menu: show / launch at login / check updates / clear / quit |
 
 ## Privacy
 
@@ -84,6 +85,7 @@ Sources/CopyNinja/
 ├── OCRService.swift          # Vision text recognition (ko-KR + en-US)
 ├── HotKeyManager.swift       # Carbon RegisterEventHotKey (⌘⇧V)
 ├── UpdateChecker.swift       # GitHub Releases update check
+├── LaunchAtLogin.swift       # SMAppService login-item toggle
 ├── NinjaIconView.swift       # vector shuriken + menu bar template image
 └── Views/                    # popover, history rows, Quick Look overlay
 ```

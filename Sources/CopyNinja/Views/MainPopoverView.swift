@@ -6,6 +6,7 @@ import SwiftUI
 struct MainPopoverView: View {
     @ObservedObject var store: ClipboardStore
     @ObservedObject var updater: UpdateChecker
+    @ObservedObject var launchAtLogin: LaunchAtLoginManager
     var onClose: () -> Void
 
     @FocusState private var searchFocused: Bool
@@ -25,6 +26,7 @@ struct MainPopoverView: View {
         .frame(width: 360, height: 520)
         .onAppear {
             searchFocused = true
+            launchAtLogin.refresh()
         }
         .onChange(of: store.focusSearchToken) { _, _ in
             searchFocused = true
@@ -254,6 +256,14 @@ struct MainPopoverView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { launchAtLogin.isEnabled },
+                    set: { launchAtLogin.setEnabled($0) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help("Start CopyNinja automatically when you log in")
 
                 Button("Quit") {
                     NSApp.terminate(nil)

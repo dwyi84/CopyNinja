@@ -18,8 +18,10 @@ struct CopyNinjaApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = ClipboardStore()
     let updateChecker = UpdateChecker()
+    private let launchAtLogin = LaunchAtLoginManager.shared
 
     private var statusItem: NSStatusItem!
+    private var launchAtLoginMenuItem: NSMenuItem!
     private var popover: NSPopover!
     private var rightClickMenu: NSMenu!
     private var keyDownMonitor: Any?
@@ -91,6 +93,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: ""
         )
         rightClickMenu.addItem(.separator())
+        launchAtLoginMenuItem = rightClickMenu.addItem(
+            withTitle: "Launch at Login",
+            action: #selector(toggleLaunchAtLoginFromMenu),
+            keyEquivalent: ""
+        )
         rightClickMenu.addItem(
             withTitle: "Check for Updates",
             action: #selector(checkForUpdatesFromMenu),
@@ -119,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: MainPopoverView(
                 store: store,
                 updater: updateChecker,
+                launchAtLogin: launchAtLogin,
                 onClose: { [weak self] in self?.closePopover() }
             )
         )
@@ -129,6 +137,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func statusItemClicked(_ sender: Any?) {
         guard let event = NSApp.currentEvent else { return }
         if event.type == .rightMouseUp {
+            launchAtLogin.refresh()
+            launchAtLoginMenuItem.state = launchAtLogin.isEnabled ? .on : .off
             statusItem.menu = rightClickMenu
             statusItem.button?.performClick(nil)
             statusItem.menu = nil
@@ -143,6 +153,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func clearAllFromMenu() {
         store.clearAll()
+    }
+
+    @objc private func toggleLaunchAtLoginFromMenu() {
+        launchAtLogin.setEnabled(!launchAtLogin.isEnabled)
     }
 
     @objc private func checkForUpdatesFromMenu() {
