@@ -160,7 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdatesFromMenu() {
-        updateChecker.openReleasePageIfAvailable()
+        updateChecker.checkForUpdatesPresentingAlert()
     }
 
     @objc private func quitApp() {

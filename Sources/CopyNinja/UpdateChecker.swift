@@ -1,24 +1,31 @@
 import AppKit
 import Foundation
 
-/// Lightweight GitHub Releases update check, modeled after NightOwl's
-/// updater: queries the Releases API, compares versions numerically, and
-/// exposes the release page URL. No download/install flow.
+struct ReleaseInfo: Equatable {
+    let version: String
+    let htmlURL: URL
+    let assetURL: URL?
+}
+
+/// GitHub Releases updater modeled after LookHere's: check → confirmation
+/// popup → download the release zip → swap the running .app via a detached
+/// helper script → relaunch. No page redirect, no Sparkle dependency.
 @MainActor
 final class UpdateChecker: ObservableObject {
 
     enum UpdateState: Equatable {
         case idle
         case checking
+        case downloading
         case upToDate
-        case available(version: String, url: URL)
+        case available(release: ReleaseInfo)
         case failed
     }
 
     static let repoOwner = "dwyi84"
     static let repoName = "CopyNinja"
     static let currentVersion =
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.1.0"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.3.0"
 
     @Published private(set) var updateState: UpdateState = .idle
 
@@ -26,10 +33,11 @@ final class UpdateChecker: ObservableObject {
         string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/latest"
     )!
 
-    var isBusy: Bool { updateState == .checking }
+    var isBusy: Bool { updateState == .checking || updateState == .downloading }
 
     // MARK: - Check
 
+    /// Silent inline check (launch auto-check + popover header button).
     func checkForUpdates() {
         guard !isBusy else { return }
         updateState = .checking
@@ -37,7 +45,7 @@ final class UpdateChecker: ObservableObject {
             guard let self else { return }
             if let release = await Self.fetchLatestRelease() {
                 if Self.isNewer(release.version) {
-                    updateState = .available(version: release.version, url: release.htmlURL)
+                    updateState = .available(release: release)
                 } else {
                     updateState = .upToDate
                     scheduleIdleReset()
@@ -49,13 +57,63 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
-    /// Menu action: opens the release page when an update is already known to
-    /// exist, otherwise runs a fresh check.
-    func openReleasePageIfAvailable() {
-        if case .available(_, let url) = updateState {
-            NSWorkspace.shared.open(url)
-        } else {
-            checkForUpdates()
+    /// Menu action: runs a fresh check and presents the outcome — an update
+    /// prompt (Update Now / Later), an up-to-date note, or an error.
+    func checkForUpdatesPresentingAlert() {
+        guard !isBusy else { return }
+        updateState = .checking
+        Task { [weak self] in
+            guard let self else { return }
+            if let release = await Self.fetchLatestRelease() {
+                if Self.isNewer(release.version) {
+                    updateState = .available(release: release)
+                    presentUpdateConfirmation()
+                } else {
+                    updateState = .upToDate
+                    scheduleIdleReset()
+                    Self.presentUpToDateAlert()
+                }
+            } else {
+                updateState = .failed
+                scheduleIdleReset()
+                Self.presentFailedAlert()
+            }
+        }
+    }
+
+    /// "Update to vX?" prompt. Also used by the popover's Update Available
+    /// button. Confirming downloads and installs without leaving the app.
+    func presentUpdateConfirmation() {
+        guard case .available(let release) = updateState else { return }
+        let alert = NSAlert()
+        alert.messageText = "Update to v\(release.version)?"
+        alert.informativeText =
+            "CopyNinja \(release.version) is available — you have \(Self.currentVersion). "
+            + "The update is downloaded and installed automatically."
+        alert.addButton(withTitle: "Update Now")
+        alert.addButton(withTitle: "Later")
+        if alert.runModal() == .alertFirstButtonReturn {
+            downloadAndInstall()
+        }
+    }
+
+    private func downloadAndInstall() {
+        guard case .available(let release) = updateState, let assetURL = release.assetURL else {
+            updateState = .failed
+            scheduleIdleReset()
+            return
+        }
+        updateState = .downloading
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let zipURL = try await Self.downloadAsset(from: assetURL)
+                Self.installAndRelaunch(zipURL: zipURL)
+            } catch {
+                NSLog("CopyNinja: update download failed — \(error.localizedDescription)")
+                updateState = .failed
+                scheduleIdleReset()
+            }
         }
     }
 
@@ -69,12 +127,7 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
-    // MARK: - GitHub Releases plumbing (mirrors NightOwl)
-
-    private struct ReleaseInfo {
-        let version: String
-        let htmlURL: URL
-    }
+    // MARK: - GitHub Releases plumbing (mirrors LookHere)
 
     private static func fetchLatestRelease() async -> ReleaseInfo? {
         var request = URLRequest(url: apiURL)
@@ -92,16 +145,94 @@ final class UpdateChecker: ObservableObject {
                   let url = URL(string: html) else {
                 return nil
             }
+            // Prefer the .zip release asset for the in-app update flow.
+            let assetURL = (json?["assets"] as? [[String: Any]])?
+                .compactMap { $0["browser_download_url"] as? String }
+                .compactMap(URL.init(string:))
+                .first { $0.pathExtension == "zip" }
             // Store the version without the "v" tag prefix — the UI adds it.
-            let tag = rawTag.hasPrefix("v") ? String(rawTag.dropFirst()) : rawTag
-            return ReleaseInfo(version: tag, htmlURL: url)
+            let version = rawTag.hasPrefix("v") ? String(rawTag.dropFirst()) : rawTag
+            return ReleaseInfo(version: version, htmlURL: url, assetURL: assetURL)
         } catch {
             return nil
         }
     }
 
-    private static func isNewer(_ version: String) -> Bool {
+    static func isNewer(_ version: String) -> Bool {
         let cleaned = version.hasPrefix("v") ? String(version.dropFirst()) : version
         return cleaned.compare(currentVersion, options: .numeric) == .orderedDescending
+    }
+
+    /// Downloads the release asset zip to a temporary location.
+    private static func downloadAsset(from url: URL) async throws -> URL {
+        var request = URLRequest(url: url)
+        request.setValue("CopyNinja/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 120
+        let (tempURL, response) = try await URLSession.shared.download(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw URLError(.badServerResponse)
+        }
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("zip")
+        try FileManager.default.moveItem(at: tempURL, to: destination)
+        return destination
+    }
+
+    /// Replaces the running .app with the downloaded one and relaunches.
+    /// A detached helper script does the swap after this process exits.
+    private static func installAndRelaunch(zipURL: URL) {
+        let bundleURL = Bundle.main.bundleURL
+        let appPath = bundleURL.path
+        let appDir = bundleURL.deletingLastPathComponent().path
+        let scriptPath = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("copyninja-update.sh")
+
+        let script = """
+        #!/bin/bash
+        sleep 1
+        pkill -x CopyNinja 2>/dev/null || true
+        sleep 0.5
+        rm -rf "\(appPath)"
+        ditto -x -k "\(zipURL.path)" "\(appDir)"
+        chmod +x "\(appPath)/Contents/MacOS/CopyNinja" 2>/dev/null || true
+        open "\(appPath)"
+        rm -f "\(zipURL.path)" "\(scriptPath)"
+        exit 0
+        """
+
+        try? script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: scriptPath
+        )
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [scriptPath]
+        try? process.run()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            NSApp.terminate(nil)
+        }
+    }
+
+    // MARK: - Result alerts
+
+    private static func presentUpToDateAlert() {
+        let alert = NSAlert()
+        alert.messageText = "You're Up to Date"
+        alert.informativeText = "CopyNinja \(currentVersion) is the latest version."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private static func presentFailedAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Update Check Failed"
+        alert.informativeText =
+            "Could not reach GitHub Releases. Check your connection and try again."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }

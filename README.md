@@ -22,7 +22,7 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 - **Shuriken Icon** — the menu bar glyph is pure SwiftUI `Shape`/`Path` vector art (a four-bladed throwing star), rendered as a template image that follows the menu bar tint.
 - **Persistence** — history (max 500 entries) is stored under `~/Library/Application Support/CopyNinja/`. Originals and thumbnails live as separate files so scrolling stays smooth (`NSCache` on top).
 - **Clear All** — `⌘K` or `⌘⇧⌫` wipes in-memory history, on-disk storage, and the system clipboard in one stroke.
-- **Update Check** — queries the GitHub Releases API and offers a one-click link to the newest release.
+- **In-App Updates** — checks GitHub Releases once at launch (and on demand via the right-click menu or popover button). When a new version is found, a confirmation popup downloads and installs it — the app swaps itself and relaunches, no browser needed.
 - **Launch at Login** — a toggle in the shuriken's right-click menu or the popover footer registers the app with Apple's modern `SMAppService`, so CopyNinja starts automatically after a reboot. No helper binaries, no launch daemons.
 - **Tiny & Private** — a single self-contained binary. No third-party dependencies, no analytics, no tracking. Everything happens on your Mac.
 

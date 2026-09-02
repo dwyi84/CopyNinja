@@ -69,34 +69,6 @@ struct MainPopoverView: View {
     @ViewBuilder
     private var updateIndicator: some View {
         switch updater.updateState {
-        case .checking:
-            ProgressView()
-                .controlSize(.mini)
-                .help("Checking for updates…")
-        case .upToDate:
-            HStack(spacing: 3) {
-                Image(systemName: "checkmark.circle")
-                Text("Up to date")
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        case .available(let version, let url):
-            Link(destination: url) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.circle.fill")
-                    Text("v\(version)")
-                        .font(.caption.weight(.semibold))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.accentColor.opacity(0.25))
-                )
-                .foregroundStyle(Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .help("Update available — open the release page")
         case .idle:
             Button("Check for Updates") {
                 updater.checkForUpdates()
@@ -104,6 +76,28 @@ struct MainPopoverView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .help("Check for updates")
+        case .checking:
+            ProgressView()
+                .controlSize(.mini)
+                .help("Checking for updates…")
+        case .downloading:
+            ProgressView()
+                .controlSize(.mini)
+                .help("Downloading update…")
+        case .upToDate:
+            HStack(spacing: 3) {
+                Image(systemName: "checkmark.circle")
+                Text("Up to date")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        case .available(let release):
+            Button("Update Available") {
+                updater.presentUpdateConfirmation()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Update to v\(release.version)")
         case .failed:
             Button("Check Again") {
                 updater.checkForUpdates()
