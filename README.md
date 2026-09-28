@@ -30,13 +30,31 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 
 - macOS 14 (Sonoma) or later
 - Apple Silicon (arm64)
-- Xcode Command Line Tools (for the Swift toolchain)
+- Xcode Command Line Tools (only if you build from source)
 
 ## Installation
 
-Grab the latest `CopyNinja-<version>.zip` from [Releases](https://github.com/dwyi84/CopyNinja/releases), unzip it, and drag `CopyNinja.app` into `/Applications` (or anywhere you like). No build tools required.
+### Homebrew (recommended)
 
-The app signs and updates itself in place, so macOS may ask you to confirm the first launch — right-click `CopyNinja.app` and choose **Open** once, then it launches normally.
+```bash
+brew tap dwyi84/tap
+brew trust dwyi84/tap
+brew install --cask copyninja
+```
+
+This installs **CopyNinja.app** to `~/Applications`. Because the app is signed ad-hoc rather than notarized by Apple, Gatekeeper blocks the first launch — right-click the app and choose **Open**, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine "$HOME/Applications/CopyNinja.app"
+```
+
+### Manual download
+
+No build tools needed — grab the app straight from the latest release:
+
+1. Open the [latest release](https://github.com/dwyi84/CopyNinja/releases/latest) and download the `CopyNinja-x.y.z.zip` asset.
+2. Unzip it and drag **CopyNinja.app** into your **Applications** folder.
+3. On first launch macOS Gatekeeper may warn for the same reason as above. **Right-click the app → Open**, then confirm **Open**.
 
 ### Build from source (optional)
 
@@ -93,6 +111,13 @@ Sources/CopyNinja/
 ├── NinjaIconView.swift       # vector shuriken + menu bar template image
 └── Views/                    # popover, history rows, Quick Look overlay
 ```
+
+### Releases
+
+1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Resources/Info.plist`, then run `./build.sh`.
+2. Zip the bundle: `ditto -c -k --sequesterRsrc --keepParent dist/CopyNinja.app dist/CopyNinja-<version>.zip`.
+3. Commit, tag `v<version>`, and push; create the GitHub release with the zip asset.
+4. Point the Homebrew tap at the new build: `Scripts/update_cask.sh <version>`, then commit/push [dwyi84/homebrew-tap](https://github.com/dwyi84/homebrew-tap).
 
 ## License
 
