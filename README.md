@@ -37,9 +37,8 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 ### Homebrew (recommended)
 
 ```bash
-brew tap dwyi84/tap
-brew trust dwyi84/tap
-brew install --cask copyninja
+brew install --cask dwyi84/tap/copyninja
+
 ```
 
 This installs **CopyNinja.app** to `~/Applications`. Because the app is signed ad-hoc rather than notarized by Apple, Gatekeeper blocks the first launch — right-click the app and choose **Open**, or clear the quarantine flag:
