@@ -25,7 +25,7 @@ final class UpdateChecker: ObservableObject {
     static let repoOwner = "dwyi84"
     static let repoName = "CopyNinja"
     static let currentVersion =
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.3.0"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.3.1"
 
     @Published private(set) var updateState: UpdateState = .idle
 
@@ -88,8 +88,8 @@ final class UpdateChecker: ObservableObject {
         let alert = NSAlert()
         alert.messageText = "Update to v\(release.version)?"
         alert.informativeText =
-            "CopyNinja \(release.version) is available — you have \(Self.currentVersion). "
-            + "The update is downloaded and installed automatically."
+            "A new version (v\(release.version)) is available — you're on v\(Self.currentVersion). "
+            + "It will download and install automatically, then CopyNinja relaunches."
         alert.addButton(withTitle: "Update Now")
         alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn {
@@ -222,7 +222,7 @@ final class UpdateChecker: ObservableObject {
     private static func presentUpToDateAlert() {
         let alert = NSAlert()
         alert.messageText = "You're Up to Date"
-        alert.informativeText = "CopyNinja \(currentVersion) is the latest version."
+        alert.informativeText = "CopyNinja v\(currentVersion) is the latest version."
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }

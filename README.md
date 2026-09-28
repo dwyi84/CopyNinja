@@ -34,7 +34,13 @@ A featherweight **macOS clipboard manager** that lives quietly in the menu bar. 
 
 ## Installation
 
-Clone and build — no Xcode project required:
+Grab the latest `CopyNinja-<version>.zip` from [Releases](https://github.com/dwyi84/CopyNinja/releases), unzip it, and drag `CopyNinja.app` into `/Applications` (or anywhere you like). No build tools required.
+
+The app signs and updates itself in place, so macOS may ask you to confirm the first launch — right-click `CopyNinja.app` and choose **Open** once, then it launches normally.
+
+### Build from source (optional)
+
+Requires Xcode Command Line Tools. Clone and build — no Xcode project required:
 
 ```bash
 git clone https://github.com/dwyi84/CopyNinja.git
@@ -43,8 +49,6 @@ cd CopyNinja
 ```
 
 `build.sh` compiles with Swift Package Manager, assembles `CopyNinja.app` (with an `LSUIElement` bundle so it lives quietly in the menu bar), signs it ad-hoc, and launches it.
-
-Or grab the latest `CopyNinja-<version>.zip` from [Releases](https://github.com/dwyi84/CopyNinja/releases), unzip, and drag `CopyNinja.app` anywhere you like.
 
 ## Usage
 
