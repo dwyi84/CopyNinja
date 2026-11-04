@@ -257,6 +257,8 @@ struct MainPopoverView: View {
                 ))
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .font(.caption)
+                .fixedSize()
                 .help("Start CopyNinja automatically when you log in")
 
                 Button("Quit") {
