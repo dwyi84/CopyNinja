@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 100 100">
+  <!-- Four-bladed shuriken with an even-odd center hole. -->
+  <path fill="#2e3436" fill-rule="evenodd" d="
+    M 50 4
+    Q 61 39 96 50
+    Q 61 61 50 96
+    Q 39 61 4 50
+    Q 39 39 50 4
+    Z
+    M 50 41
+    A 9 9 0 1 0 50 59
+    A 9 9 0 1 0 50 41
+    Z"/>
+</svg>

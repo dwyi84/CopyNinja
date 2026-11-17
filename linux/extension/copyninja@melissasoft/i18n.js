@@ -1,0 +1,116 @@
+import GLib from 'gi://GLib';
+
+/*
+ * Small JS catalog instead of gettext: `msgfmt` is not part of a stock Ubuntu
+ * desktop, and the extension should stay buildable with no extra packages.
+ */
+const CATALOG = {
+    en: {
+        'Search history': 'Search history',
+        'Clear all history': 'Clear all history',
+        'Clear all clipboard history?': 'Clear all clipboard history?',
+        'This removes every stored entry and image, and clears the system clipboard.':
+            'This removes every stored entry and image, and clears the system clipboard.',
+        'Cancel': 'Cancel',
+        'Clear All': 'Clear All',
+        'No history yet': 'No history yet',
+        'Copied text and images will appear here.': 'Copied text and images will appear here.',
+        'No results': 'No results',
+        'Try a different search term.': 'Try a different search term.',
+        'Move': 'Move',
+        'Copy': 'Copy',
+        'Quick': 'Quick',
+        'Preview': 'Preview',
+        'Close': 'Close',
+        'Settings': 'Settings',
+        'Private mode': 'Private mode',
+        'Private mode pauses clipboard capture.': 'Private mode pauses clipboard capture.',
+        'Could not copy this item.': 'Could not copy this item.',
+        'Image unavailable': 'Image unavailable',
+        'Image': 'Image',
+        'Text': 'Text',
+        'History size': 'History size',
+        'Maximum number of entries kept on disk.': 'Maximum number of entries kept on disk.',
+        'Capture images': 'Capture images',
+        'Store image clipboard entries.': 'Store image clipboard entries.',
+        'Toggle popup': 'Toggle popup',
+        'Change': 'Change',
+        'Set shortcut': 'Set shortcut',
+        'Press the new shortcut…': 'Press the new shortcut…',
+        'Include at least one modifier.': 'Include at least one modifier.',
+        'Excluded apps': 'Excluded apps',
+        'WM_CLASS values, comma separated.': 'WM_CLASS values, comma separated.',
+        'Save': 'Save',
+        'Privacy': 'Privacy',
+        'Clear history': 'Clear history',
+        'Open data folder': 'Open data folder',
+        'About': 'About',
+        'Version': 'Version',
+        'License': 'License',
+        'GitHub': 'GitHub',
+        'Clipboard history stays on this device.': 'Clipboard history stays on this device.',
+        'CopyNinja': 'CopyNinja',
+        'Copied text and images appear here.': 'Copied text and images appear here.',
+        'Up/Down Move · Enter Copy · Ctrl+1~0 Quick': 'Up/Down Move · Enter Copy · Ctrl+1~0 Quick',
+        'Space Preview · Esc Close': 'Space Preview · Esc Close',
+    },
+    ko: {
+        'Search history': '기록 검색',
+        'Clear all history': '전체 기록 삭제',
+        'Clear all clipboard history?': '클립보드 기록을 모두 삭제할까요?',
+        'This removes every stored entry and image, and clears the system clipboard.':
+            '저장된 모든 항목과 이미지를 삭제하고 시스템 클립보드도 비웁니다.',
+        'Cancel': '취소',
+        'Clear All': '모두 삭제',
+        'No history yet': '아직 기록이 없습니다',
+        'Copied text and images will appear here.': '복사한 텍스트와 이미지가 여기에 표시됩니다.',
+        'No results': '검색 결과가 없습니다',
+        'Try a different search term.': '다른 검색어를 입력해 보세요.',
+        'Move': '이동',
+        'Copy': '복사',
+        'Quick': '빠른 복사',
+        'Preview': '미리보기',
+        'Close': '닫기',
+        'Settings': '설정',
+        'Private mode': '프라이빗 모드',
+        'Private mode pauses clipboard capture.': '프라이빗 모드에서는 클립보드 수집을 멈춥니다.',
+        'Could not copy this item.': '이 항목을 복사하지 못했습니다.',
+        'Image unavailable': '이미지를 불러올 수 없습니다',
+        'Image': '이미지',
+        'Text': '텍스트',
+        'History size': '기록 개수',
+        'Maximum number of entries kept on disk.': '디스크에 보관할 최대 항목 수입니다.',
+        'Capture images': '이미지 수집',
+        'Store image clipboard entries.': '클립보드의 이미지도 저장합니다.',
+        'Toggle popup': '팝업 단축키',
+        'Change': '변경',
+        'Set shortcut': '단축키 설정',
+        'Press the new shortcut…': '새 단축키를 누르세요…',
+        'Include at least one modifier.': '수정자 키를 하나 이상 포함하세요.',
+        'Excluded apps': '제외할 앱',
+        'WM_CLASS values, comma separated.': 'WM_CLASS 값을 쉼표로 구분해 입력하세요.',
+        'Save': '저장',
+        'Privacy': '개인정보',
+        'Clear history': '기록 삭제',
+        'Open data folder': '데이터 폴더 열기',
+        'About': '정보',
+        'Version': '버전',
+        'License': '라이선스',
+        'GitHub': 'GitHub',
+        'Clipboard history stays on this device.': '클립보드 기록은 이 기기에만 저장됩니다.',
+        'CopyNinja': 'CopyNinja',
+        'Copied text and images appear here.': '복사한 텍스트와 이미지가 여기에 표시됩니다.',
+        'Up/Down Move · Enter Copy · Ctrl+1~0 Quick': '↑↓ 이동 · Enter 복사 · Ctrl+1~0 빠른 복사',
+        'Space Preview · Esc Close': 'Space 미리보기 · Esc 닫기',
+    },
+};
+
+export function getLocale() {
+    const names = GLib.get_language_names() ?? [];
+    return names.some(name => name.toLowerCase().startsWith('ko')) ? 'ko' : 'en';
+}
+
+export function _(text) {
+    const catalog = CATALOG[getLocale()] ?? CATALOG.en;
+    return catalog[text] ?? CATALOG.en[text] ?? text;
+}

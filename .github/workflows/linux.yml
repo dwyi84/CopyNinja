@@ -1,0 +1,36 @@
+name: Linux
+
+on:
+  push:
+    paths:
+      - 'linux/**'
+      - '.github/workflows/linux.yml'
+  pull_request:
+    paths:
+      - 'linux/**'
+      - '.github/workflows/linux.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gjs libglib2.0-bin
+
+      - name: Unit tests and schema validation
+        run: make -C linux check
+
+      - name: Build extension bundle
+        run: |
+          sudo apt-get install -y gnome-shell zip
+          make -C linux pack
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: copyninja-linux
+          path: linux/build/*.zip

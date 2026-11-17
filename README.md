@@ -67,6 +67,14 @@ cd CopyNinja
 
 `build.sh` compiles with Swift Package Manager, assembles `CopyNinja.app` (with an `LSUIElement` bundle so it lives quietly in the menu bar), signs it ad-hoc, and launches it.
 
+### Ubuntu / GNOME
+
+CopyNinja is also available as a native GNOME Shell 46 extension for Ubuntu
+24.04. It lives in the top bar, supports text and images, and stores history
+under `~/.local/share/copyninja/`.
+
+See [linux/README.md](linux/README.md) for installation and usage.
+
 ## Usage
 
 | Action | Result |

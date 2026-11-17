@@ -1,0 +1,202 @@
+/* CopyNinja — GNOME Shell 46
+ *
+ * Colors use the inherited Shell theme foreground with opacity for secondary
+ * text, and neutral gray fills. This keeps the popup readable in both dark and
+ * light Shell themes.
+ */
+
+.copyninja-panel-button {
+    padding: 0 6px;
+}
+
+.copyninja-panel-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.copyninja-menu {
+    width: 360px;
+}
+
+.copyninja-header-item {
+    padding: 8px 12px 2px 12px;
+}
+
+.copyninja-header {
+    spacing: 6px;
+}
+
+.copyninja-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.copyninja-version {
+    font-size: 9px;
+    opacity: 0.55;
+    padding-top: 3px;
+}
+
+.copyninja-icon-button {
+    padding: 4px;
+    border-radius: 6px;
+    background-color: transparent;
+}
+
+.copyninja-icon-button:hover {
+    background-color: rgba(127, 127, 127, 0.18);
+}
+
+.copyninja-search-item {
+    padding: 4px 12px 8px 12px;
+}
+
+.copyninja-search-box {
+    spacing: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background-color: rgba(127, 127, 127, 0.16);
+}
+
+.copyninja-search-icon {
+    opacity: 0.55;
+}
+
+.copyninja-search-entry {
+    background-color: transparent;
+    color: inherit;
+    font-size: 13px;
+}
+
+.copyninja-search-clear {
+    padding: 2px;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+.copyninja-search-clear:hover {
+    background-color: rgba(127, 127, 127, 0.18);
+}
+
+.copyninja-scroll {
+    max-height: 360px;
+}
+
+.copyninja-row {
+    padding: 5px 10px;
+    margin: 1px 6px;
+    border-radius: 6px;
+}
+
+.copyninja-row:hover {
+    background-color: rgba(127, 127, 127, 0.14);
+}
+
+.copyninja-row-selected {
+    background-color: rgba(53, 132, 228, 0.30);
+}
+
+.copyninja-row-box {
+    spacing: 8px;
+}
+
+.copyninja-row-icon {
+    opacity: 0.55;
+}
+
+.copyninja-thumb {
+    border-radius: 4px;
+}
+
+.copyninja-row-text {
+    spacing: 1px;
+}
+
+.copyninja-preview {
+    font-size: 12px;
+}
+
+.copyninja-meta {
+    font-size: 9px;
+    opacity: 0.55;
+}
+
+.copyninja-badge {
+    font-size: 9px;
+    opacity: 0.60;
+    background-color: rgba(127, 127, 127, 0.16);
+    border-radius: 4px;
+    padding: 1px 4px;
+}
+
+.copyninja-empty-item {
+    padding: 0;
+}
+
+.copyninja-empty {
+    padding: 28px 16px;
+    spacing: 6px;
+}
+
+.copyninja-empty-icon {
+    opacity: 0.30;
+}
+
+.copyninja-empty-title {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.copyninja-empty-subtitle {
+    font-size: 10px;
+    opacity: 0.55;
+}
+
+.copyninja-hint-item {
+    padding: 2px 12px 2px 12px;
+}
+
+.copyninja-hints {
+    spacing: 1px;
+}
+
+.copyninja-hint {
+    font-size: 9px;
+    opacity: 0.50;
+}
+
+.copyninja-preview-content {
+    spacing: 8px;
+    padding: 8px;
+    width: 340px;
+}
+
+.copyninja-preview-scroll {
+    background-color: rgba(127, 127, 127, 0.12);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.copyninja-preview-text {
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.copyninja-preview-image-bin {
+    padding: 8px;
+}
+
+.copyninja-confirm {
+    spacing: 6px;
+    width: 300px;
+}
+
+.copyninja-confirm-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.copyninja-confirm-body {
+    font-size: 11px;
+    opacity: 0.65;
+}

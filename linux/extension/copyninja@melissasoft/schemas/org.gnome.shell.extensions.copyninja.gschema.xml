@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.copyninja"
+          path="/org/gnome/shell/extensions/copyninja/">
+    <key name="history-limit" type="i">
+      <default>500</default>
+      <range min="50" max="2000"/>
+      <summary>Maximum number of clipboard entries</summary>
+      <description>Older entries and their images are removed when this limit is exceeded.</description>
+    </key>
+
+    <key name="capture-images" type="b">
+      <default>true</default>
+      <summary>Capture image clipboard entries</summary>
+      <description>When disabled, only text is stored.</description>
+    </key>
+
+    <key name="private-mode" type="b">
+      <default>false</default>
+      <summary>Pause clipboard capture</summary>
+      <description>While enabled, CopyNinja does not add new clipboard content to the history.</description>
+    </key>
+
+    <key name="toggle-copyninja" type="as">
+      <default><![CDATA[['<Super><Shift>v']]]></default>
+      <summary>Global shortcut that opens the CopyNinja popup</summary>
+      <description>An array so the GNOME Shell keybinding API can register it. CopyNinja uses the first accelerator.</description>
+    </key>
+
+    <key name="excluded-apps" type="as">
+      <default><![CDATA[['keepassxc', 'bitwarden', '1password', 'seahorse']]]></default>
+      <summary>WM_CLASS substrings whose clipboard content is ignored</summary>
+    </key>
+
+    <key name="clear-request" type="i">
+      <default>0</default>
+      <range min="0" max="2147483647"/>
+      <summary>Incremented by the preferences window to request a history wipe</summary>
+    </key>
+  </schema>
+</schemalist>
