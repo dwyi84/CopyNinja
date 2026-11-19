@@ -103,6 +103,8 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         this._rows = [];
         this._selectedIndex = 0;
         this._searchTimeoutId = 0;
+        this._ensureVisibleId = 0;
+        this._lastSearchQuery = '';
         this._previewDialog = null;
         this._confirmDialog = null;
         this._settingsIds = [];
@@ -335,8 +337,11 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             x_expand: true,
             hint_text: _('Search history'),
         });
-        this._searchEntry.get_clutter_text().connect('text-changed', () => this._onSearchChanged());
-        this._searchEntry.get_clutter_text().connect('key-press-event',
+        const clutterText = this._searchEntry.get_clutter_text();
+        clutterText.connect('text-changed', () => this._onSearchChanged());
+        clutterText.connect('cursor-changed', () => this._onSearchChanged());
+        clutterText.connect('key-release-event', () => this._onSearchChanged());
+        clutterText.connect('key-press-event',
             (actor, event) => this._onKeyPress(actor, event));
         box.add_child(this._searchEntry);
 
@@ -431,6 +436,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _opened() {
+        this._lastSearchQuery = '';
         this._searchEntry.set_text('');
         this._selectedIndex = 0;
         this._refresh();
@@ -450,12 +456,25 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         }
     }
 
+    _searchQuery() {
+        const clutterText = this._searchEntry?.get_clutter_text();
+        if (!clutterText)
+            return '';
+        const committed = clutterText.get_text() ?? '';
+        const layoutText = clutterText.get_layout()?.get_text() ?? '';
+        return layoutText.length >= committed.length ? layoutText : committed;
+    }
+
     _onSearchChanged() {
+        const query = this._searchQuery();
+        this._searchClear.visible = query.length > 0;
+        if (query === this._lastSearchQuery)
+            return;
+
+        this._lastSearchQuery = query;
         if (this._searchTimeoutId)
             GLib.source_remove(this._searchTimeoutId);
 
-        const text = this._searchEntry.get_text();
-        this._searchClear.visible = text.length > 0;
         this._selectedIndex = 0;
 
         this._searchTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 60, () => {
@@ -471,7 +490,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         if (!this._listSection)
             return;
 
-        const query = this._searchEntry?.get_text() ?? '';
+        const query = this._searchQuery();
         const items = this._store.filtered(query);
 
         this._clearList();
@@ -492,6 +511,10 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _clearList() {
+        if (this._ensureVisibleId) {
+            GLib.source_remove(this._ensureVisibleId);
+            this._ensureVisibleId = 0;
+        }
         if (typeof this._listSection.removeAll === 'function') {
             this._listSection.removeAll();
             return;
@@ -603,12 +626,18 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _ensureVisible() {
+        if (this._ensureVisibleId) {
+            GLib.source_remove(this._ensureVisibleId);
+            this._ensureVisibleId = 0;
+        }
+
         const row = this._rows[this._selectedIndex];
         if (!row)
             return;
 
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            if (!row.get_stage())
+        this._ensureVisibleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._ensureVisibleId = 0;
+            if (!this._rows.includes(row) || !row.get_stage())
                 return GLib.SOURCE_REMOVE;
 
             const adjustment = this._scroll.vadjustment ?? this._scroll.vscroll?.adjustment;
@@ -646,11 +675,16 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
     // -------------------------------------------------------------------- keys
 
+    _hasSearchText() {
+        return this._searchQuery().trim().length > 0;
+    }
+
     _onKeyPress(actor, event) {
         const symbol = event.get_key_symbol();
         const state = event.get_state();
         const ctrl = (state & Clutter.ModifierType.CONTROL_MASK) !== 0;
         const shift = (state & Clutter.ModifierType.SHIFT_MASK) !== 0;
+        const alt = (state & Clutter.ModifierType.MOD1_MASK) !== 0;
 
         if (ctrl && !shift && QUICK_KEYS[symbol] !== undefined) {
             this._copyQuickSlot(QUICK_KEYS[symbol]);
@@ -693,7 +727,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             this._copySelected();
             return Clutter.EVENT_STOP;
         case Clutter.KEY_space:
-            if (!this._searchEntry.get_text().trim() && this._rows.length > 0) {
+            if (!ctrl && !shift && !alt && !this._hasSearchText() && this._rows.length > 0) {
                 this._showPreview(this._rows[this._selectedIndex]?.entry);
                 return Clutter.EVENT_STOP;
             }
@@ -717,7 +751,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _copyQuickSlot(slot) {
-        const item = this._store.quickSlot(this._searchEntry.get_text(), slot);
+        const item = this._store.quickSlot(this._searchQuery(), slot);
         if (item)
             this._copyItem(item);
     }
@@ -773,6 +807,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
                 hscrollbar_policy: St.PolicyType.NEVER,
                 vscrollbar_policy: St.PolicyType.AUTOMATIC,
             });
+            const textBox = new St.BoxLayout({vertical: true, x_expand: true});
             const label = new St.Label({
                 text: entry.text ?? '',
                 style_class: 'copyninja-preview-text',
@@ -780,7 +815,8 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             label.clutter_text.set_line_wrap(true);
             label.clutter_text.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR);
             label.set_width(320);
-            scroll.add_child(label);
+            textBox.add_child(label);
+            scroll.add_child(textBox);
             scroll.set_height(380);
             content.add_child(scroll);
         } else {
@@ -940,6 +976,10 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         if (this._searchTimeoutId) {
             GLib.source_remove(this._searchTimeoutId);
             this._searchTimeoutId = 0;
+        }
+        if (this._ensureVisibleId) {
+            GLib.source_remove(this._ensureVisibleId);
+            this._ensureVisibleId = 0;
         }
 
         for (const id of this._settingsIds)

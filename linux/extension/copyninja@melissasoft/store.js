@@ -60,12 +60,12 @@ export class HistoryStore {
     }
 
     filtered(query = '') {
-        const needle = String(query).trim().toLocaleLowerCase();
+        const needle = String(query).normalize('NFC').trim().toLocaleLowerCase();
         if (!needle)
             return this.items;
 
         return this.items.filter(item =>
-            (item.searchText ?? '').toLocaleLowerCase().includes(needle));
+            (item.searchText ?? '').normalize('NFC').toLocaleLowerCase().includes(needle));
     }
 
     /** 1–9 map to the first nine entries, 0 maps to the tenth. */

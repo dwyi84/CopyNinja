@@ -4,6 +4,6 @@
   "description": "A featherweight clipboard history in the GNOME top bar. Captures text and images, deduplicates, and keeps everything on this device.",
   "shell-version": ["46"],
   "settings-schema": "org.gnome.shell.extensions.copyninja",
-  "version-name": "0.4.1",
+  "version-name": "0.4.2",
   "url": "https://github.com/dwyi84/CopyNinja"
 }

@@ -1,4 +1,4 @@
-export const LINUX_FALLBACK_VERSION = '0.4.1';
+export const LINUX_FALLBACK_VERSION = '0.4.2';
 
 export function normalizeVersion(version) {
     return String(version ?? '').trim().replace(/^[vV]/, '');

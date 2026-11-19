@@ -210,6 +210,15 @@ test('HistoryStore search and quick slots', () => {
     assert(store.quickSlot('', 0) === null, 'empty slot 0');
 });
 
+test('HistoryStore searches Korean text across NFC and NFD', () => {
+    const store = new HistoryStore({limit: 20});
+    store.add(textItem('안녕하세요 세계', 2));
+    store.add(textItem('복사 테스트'.normalize('NFD'), 1));
+
+    assert(store.filtered('안녕').length === 1, 'Korean NFC search');
+    assert(store.filtered('테스트').length === 1, 'Korean NFD item matches NFC query');
+});
+
 test('format helpers', () => {
     const date = new Date(2026, 10, 17, 15, 4, 5);
     assert(formatTimestamp(date) === '11-17 15:04:05', formatTimestamp(date));
