@@ -15,12 +15,6 @@
       <description>When disabled, only text is stored.</description>
     </key>
 
-    <key name="private-mode" type="b">
-      <default>false</default>
-      <summary>Pause clipboard capture</summary>
-      <description>While enabled, CopyNinja does not add new clipboard content to the history.</description>
-    </key>
-
     <key name="toggle-copyninja" type="as">
       <default><![CDATA[['<Super><Shift>v']]]></default>
       <summary>Global shortcut that opens the CopyNinja popup</summary>

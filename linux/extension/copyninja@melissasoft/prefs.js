@@ -7,6 +7,7 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {_} from './i18n.js';
+import {LINUX_FALLBACK_VERSION} from './version.js';
 
 const REPO_URL = 'https://github.com/dwyi84/CopyNinja';
 const LICENSE_URL = 'https://github.com/dwyi84/CopyNinja/blob/main/LICENSE';
@@ -21,7 +22,7 @@ export default class CopyNinjaPreferences extends ExtensionPreferences {
         window.search_enabled = true;
 
         const settings = this.getSettings();
-        const version = this.metadata['version-name'] ?? '0.4.0';
+        const version = this.metadata['version-name'] ?? LINUX_FALLBACK_VERSION;
 
         const general = new Adw.PreferencesPage({
             title: _('Settings'),
@@ -55,13 +56,6 @@ export default class CopyNinjaPreferences extends ExtensionPreferences {
         });
         settings.bind('capture-images', imageRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         behaviour.add(imageRow);
-
-        const privateRow = new Adw.SwitchRow({
-            title: _('Private mode'),
-            subtitle: _('Private mode pauses clipboard capture.'),
-        });
-        settings.bind('private-mode', privateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        behaviour.add(privateRow);
 
         const shortcutRow = new Adw.ActionRow({title: _('Toggle popup')});
         const shortcutLabel = new Gtk.ShortcutLabel({
@@ -135,8 +129,8 @@ export default class CopyNinjaPreferences extends ExtensionPreferences {
         about.add(aboutGroup);
 
         const versionRow = new Adw.ActionRow({
-            title: _('Version'),
-            subtitle: version,
+            title: `CopyNinja for Ubuntu v${version}`,
+            subtitle: _('GNOME Shell extension · Ubuntu 24.04+'),
         });
         aboutGroup.add(versionRow);
 

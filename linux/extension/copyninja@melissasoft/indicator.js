@@ -17,6 +17,7 @@ import {HistoryStorage} from './storage.js';
 import {makeThumbnail} from './image.js';
 import {formatBytes, formatTimestamp, quickSlotLabel} from './format.js';
 import {_} from './i18n.js';
+import {UpdateManager} from './updater.js';
 
 const Cairo = imports.gi.cairo;
 
@@ -82,7 +83,13 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
         this._extension = extension;
         this._settings = extension.getSettings();
-        this._version = extension.metadata['version-name'] ?? '0.4.0';
+        this._updater = new UpdateManager({
+            extension,
+            onStateChanged: () => this._syncUpdateButton(),
+            onBeforeDialog: () => this.menu?.close(),
+        });
+        this._versionLabel = null;
+        this._updateButton = null;
 
         this._store = new HistoryStore({limit: this._settings.get_int('history-limit')});
         this._storage = new HistoryStorage();
@@ -104,6 +111,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         this._buildMenu();
         this._connectSettings();
         this._initialize();
+        this._updater.checkForUpdates(false);
     }
 
     // -------------------------------------------------------------------- panel
@@ -200,9 +208,28 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         });
         box.add_child(icon);
 
-        box.add_child(new St.Label({text: _('CopyNinja'), style_class: 'copyninja-title'}));
-        box.add_child(new St.Label({text: `v${this._version}`, style_class: 'copyninja-version'}));
+        box.add_child(new St.Label({
+            text: _('CopyNinja'),
+            style_class: 'copyninja-title',
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        this._versionLabel = new St.Label({
+            text: `v${this._updater.currentVersion}`,
+            style_class: 'copyninja-version',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        box.add_child(this._versionLabel);
         box.add_child(new St.Widget({x_expand: true}));
+
+        this._updateButton = new St.Button({
+            style_class: 'copyninja-header-btn copyninja-header-update-idle',
+            can_focus: false,
+            reactive: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            label: _('Check for Updates'),
+        });
+        this._updateButton.connect('clicked', () => this._onUpdateButtonClicked());
+        box.add_child(this._updateButton);
 
         this._clearButton = new St.Button({
             style_class: 'copyninja-icon-button',
@@ -225,6 +252,66 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
         item.add_child(box);
         this.menu.addMenuItem(item);
+        this._syncUpdateButton();
+    }
+
+    _onUpdateButtonClicked() {
+        if (!this._updater)
+            return;
+        if (this._updater.state === 'available')
+            this._updater.promptInstallUpdate();
+        else
+            this._updater.checkForUpdates(true);
+    }
+
+    _syncUpdateButton() {
+        if (this._versionLabel && this._updater)
+            this._versionLabel.text = `v${this._updater.currentVersion}`;
+
+        if (!this._updateButton || !this._updater)
+            return;
+
+        const state = this._updater.state ?? 'idle';
+        let label;
+        let styleClass = 'copyninja-header-btn copyninja-header-update-idle';
+        let reactive = true;
+
+        switch (state) {
+        case 'available':
+            label = `v${this._updater.latestVersion} ${_('Update')}`;
+            styleClass = 'copyninja-header-update-btn';
+            break;
+        case 'checking':
+            label = _('Checking…');
+            reactive = false;
+            break;
+        case 'installing':
+            label = _('Updating…');
+            reactive = false;
+            break;
+        case 'up_to_date':
+            label = _('✓ Up to date');
+            reactive = false;
+            break;
+        case 'installed':
+            label = _('✓ Updated');
+            reactive = false;
+            break;
+        case 'failed':
+            label = _('Check failed');
+            break;
+        default:
+            label = _('Check for Updates');
+            break;
+        }
+
+        this._updateButton.style_class = styleClass;
+        this._updateButton.label = label;
+        this._updateButton.reactive = reactive;
+        if (reactive)
+            this._updateButton.remove_style_pseudo_class('insensitive');
+        else
+            this._updateButton.add_style_pseudo_class('insensitive');
     }
 
     _buildSearch() {
@@ -299,24 +386,11 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         hintItem.add_child(hints);
         this.menu.addMenuItem(hintItem);
 
-        this._privateSwitch = new PopupMenu.PopupSwitchMenuItem(
-            _('Private mode'), this._settings.get_boolean('private-mode'));
-        this._privateSwitch.connect('toggled',
-            (item, state) => this._settings.set_boolean('private-mode', state));
-        this.menu.addMenuItem(this._privateSwitch);
-
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         const clearItem = new PopupMenu.PopupMenuItem(_('Clear all history'));
         clearItem.connect('activate', () => this._confirmClear());
         this.menu.addMenuItem(clearItem);
-
-        const settingsItem = new PopupMenu.PopupMenuItem(_('Settings'));
-        settingsItem.connect('activate', () => {
-            this.menu.close();
-            this._extension.openPreferences();
-        });
-        this.menu.addMenuItem(settingsItem);
     }
 
     // -------------------------------------------------------------------- state
@@ -352,28 +426,15 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             this._refresh();
         }));
 
-        this._settingsIds.push(this._settings.connect('changed::private-mode',
-            () => this._syncPrivateSwitch()));
-
         this._settingsIds.push(this._settings.connect('changed::clear-request',
             () => this._clearAll()));
-    }
-
-    _syncPrivateSwitch() {
-        if (!this._privateSwitch)
-            return;
-        const state = this._settings.get_boolean('private-mode');
-        if (typeof this._privateSwitch.setToggleState === 'function')
-            this._privateSwitch.setToggleState(state);
-        else
-            this._privateSwitch.state = state;
     }
 
     _opened() {
         this._searchEntry.set_text('');
         this._selectedIndex = 0;
         this._refresh();
-        this._syncPrivateSwitch();
+        this._syncUpdateButton();
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
             if (this.menu.isOpen && this._searchEntry)
@@ -873,6 +934,8 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
     destroy() {
         this._capture?.stop();
+        this._updater?.destroy();
+        this._updater = null;
 
         if (this._searchTimeoutId) {
             GLib.source_remove(this._searchTimeoutId);

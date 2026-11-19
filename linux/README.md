@@ -13,24 +13,41 @@ Shell extension, not an AppIndicator or a background daemon.
 - **Keyboard first** — `↑↓`, `Enter`, `Space`, `Esc`, `Ctrl+1~0`.
 - **Text + images** — PNG/JPEG/WebP/GIF/BMP/TIFF; SVG is skipped on purpose.
 - **Deduplication** — re-copied content is promoted to the top.
-- **Privacy** — skips password-manager hints, supports excluded apps and a
-  private mode. History files are `0600` in a `0700` directory.
+- **Privacy** — skips password-manager hints and supports excluded apps. History
+  files are `0600` in a `0700` directory.
 - **Persistent** — 500 entries by default (configurable 50–2000), stored under
   `~/.local/share/copyninja/`.
-- **No network** — no telemetry, no cloud, no OCR. Everything is local.
+- **In-App Updates** — checks GitHub for newer Ubuntu builds at startup and from
+  the popup header button. When an update is available, clicking it downloads
+  and installs automatically without leaving GNOME Shell.
 
 ## Requirements
 
 - Ubuntu 24.04 (or another distribution with GNOME Shell 46)
 - X11 or Wayland
 - No extra runtime packages. The extension uses the Python-free GJS runtime,
-  `St.Clipboard`, `Meta.Selection`, and Gio/GdkPixbuf already present in GNOME.
+  `St.Clipboard`, `Meta.Selection`, and Gio/GdkPixbuf already present in GNOME
+  (with system `python3` / `curl` used only for on-demand update checks).
 
 Tested on Ubuntu 24.04 / GNOME Shell 46 / X11. The capture path uses
 `Meta.Selection` and `St.Clipboard`, the supported APIs on Wayland as well;
 reloading the extension on Wayland requires a logout/login.
 
 ## Install
+
+### One-liner (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dwyi84/CopyNinja/ubuntu/linux/remote-install.sh | sh
+```
+
+To uninstall:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dwyi84/CopyNinja/ubuntu/linux/remote-install.sh | sh -s -- --uninstall
+```
+
+### From a local clone
 
 ```bash
 cd linux
@@ -69,7 +86,6 @@ Default shortcut: **`Super+Shift+V`**. Change it in the extension preferences.
 | `Ctrl+1` … `Ctrl+9`, `Ctrl+0` | Copy the first ten filtered items |
 | `Ctrl+Shift+Delete` | Clear all history |
 | Type in the search field | Filter text and image entries |
-| Private mode switch | Pause capture without deleting history |
 
 Click the trash icon (or use `Ctrl+Shift+Delete`) to clear the history and the
 system clipboard.
@@ -78,18 +94,27 @@ system clipboard.
 
 - Clipboard history is stored in `~/.local/share/copyninja/` with user-only
   permissions. It is not uploaded anywhere.
+- Network requests only contact GitHub to check for newer Ubuntu builds or
+  download a user-confirmed update.
 - CopyNinja asks the clipboard for the `x-kde-passwordManagerHint` marker and
   ignores `secret`/`password` content. It also ignores common password-manager
-  `WM_CLASS` values (KeePassXC, Bitwarden, 1Password, Seahorse) and anything
-  while **Private mode** is enabled.
+  `WM_CLASS` values (KeePassXC, Bitwarden, 1Password, Seahorse).
 - On Wayland, a background app cannot inspect every MIME type offered by the
-  clipboard owner. Sensitive-content filtering is therefore best-effort. Use
-  Private mode when copying secrets.
+  clipboard owner. Sensitive-content filtering is therefore best-effort.
 - OCR is intentionally not included. The macOS app uses Apple Vision; there is
   no dependency-free equivalent on Linux. Tesseract integration may be added
   later as an optional feature.
 - The popup is a GNOME Shell menu. The macOS translucent “glass” background is
   replaced with the native Shell popup styling.
+
+## Versioning
+
+Ubuntu 24.04 is maintained on the `ubuntu` branch (while macOS is maintained on
+`main`). Ubuntu builds are versioned independently from the macOS app via
+`linux/extension/copyninja@melissasoft/metadata.json` (`version-name`), while
+macOS versions live in `Resources/Info.plist`. Ubuntu update checks only read
+the Ubuntu metadata on `ubuntu` (and optional `linux-v*` / `ubuntu-v*` release
+tags) so macOS releases never interfere with Ubuntu updates.
 
 ## Development
 
@@ -117,14 +142,23 @@ linux/
 │   ├── format.js           # Timestamps, byte sizes, quick-slot labels
 │   ├── i18n.js             # Korean/English JS catalog
 │   ├── prefs.js            # Adw preferences
+│   ├── updater.js          # In-app update check & installer
+│   ├── version.js          # Ubuntu version parsing & comparison
 │   ├── stylesheet.css
 │   └── schemas/
 ├── tests/run.js
 ├── Makefile
-└── install.sh
+├── install.sh
+└── remote-install.sh
 ```
 
 ## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dwyi84/CopyNinja/ubuntu/linux/remote-install.sh | sh -s -- --uninstall
+```
+
+Or from a local clone:
 
 ```bash
 ./install.sh uninstall

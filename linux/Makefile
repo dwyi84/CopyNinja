@@ -1,7 +1,6 @@
 UUID := copyninja@melissasoft
 SRC := extension/$(UUID)
 BUILD := build/$(UUID)
-INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
 .PHONY: all check stage install uninstall pack reload clean
 
@@ -15,32 +14,34 @@ stage:
 	rm -rf $(BUILD)
 	mkdir -p $(BUILD)
 	cp -a $(SRC)/. $(BUILD)/
+	install -m 0755 remote-install.sh $(BUILD)/remote-install.sh
 	glib-compile-schemas $(BUILD)/schemas
 
-install: stage
-	-gnome-extensions disable $(UUID) 2>/dev/null
-	mkdir -p $(HOME)/.local/share/gnome-shell/extensions
-	rm -rf $(INSTALL_DIR)
-	cp -a $(BUILD) $(INSTALL_DIR)
-	-gnome-extensions enable $(UUID) 2>/dev/null
-	@echo ""
-	@echo "CopyNinja installed."
-	@echo "  X11:     Alt+F2, type r, press Enter"
-	@echo "  Wayland: log out and back in"
-	@echo "  Shortcut: Super+Shift+V"
+install:
+	./install.sh install
 
 uninstall:
-	-gnome-extensions disable $(UUID) 2>/dev/null
-	rm -rf $(INSTALL_DIR)
-	@echo "CopyNinja uninstalled. History was kept in ~/.local/share/copyninja."
+	./install.sh uninstall
 
 pack: stage
-	gnome-extensions pack --force --out-dir build $(BUILD)
+	gnome-extensions pack --force --out-dir build \
+		--schema=schemas/org.gnome.shell.extensions.copyninja.gschema.xml \
+		--extra-source=capture.js \
+		--extra-source=format.js \
+		--extra-source=i18n.js \
+		--extra-source=icons \
+		--extra-source=image.js \
+		--extra-source=indicator.js \
+		--extra-source=model.js \
+		--extra-source=remote-install.sh \
+		--extra-source=storage.js \
+		--extra-source=store.js \
+		--extra-source=updater.js \
+		--extra-source=version.js \
+		$(BUILD)
 
 reload:
-	-gnome-extensions disable $(UUID) 2>/dev/null
-	sleep 0.3
-	-gnome-extensions enable $(UUID) 2>/dev/null
+	./install.sh reload
 
 clean:
 	rm -rf build

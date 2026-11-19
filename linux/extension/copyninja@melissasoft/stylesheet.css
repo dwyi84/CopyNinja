@@ -23,7 +23,7 @@
 }
 
 .copyninja-header {
-    spacing: 6px;
+    spacing: 5px;
 }
 
 .copyninja-title {
@@ -34,7 +34,36 @@
 .copyninja-version {
     font-size: 9px;
     opacity: 0.55;
-    padding-top: 3px;
+    padding-top: 2px;
+}
+
+.copyninja-header-btn {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    background-color: rgba(127, 127, 127, 0.16);
+}
+
+.copyninja-header-btn:hover {
+    background-color: rgba(127, 127, 127, 0.24);
+}
+
+.copyninja-header-update-idle:insensitive {
+    opacity: 0.60;
+}
+
+.copyninja-header-update-btn {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #3584e4;
+}
+
+.copyninja-header-update-btn:hover {
+    background-color: #1c71d8;
 }
 
 .copyninja-icon-button {
@@ -79,7 +108,8 @@
 }
 
 .copyninja-scroll {
-    max-height: 360px;
+    min-height: 480px;
+    max-height: 520px;
 }
 
 .copyninja-row {
@@ -134,7 +164,7 @@
 }
 
 .copyninja-empty {
-    padding: 28px 16px;
+    padding: 140px 16px;
     spacing: 6px;
 }
 
@@ -199,4 +229,19 @@
 .copyninja-confirm-body {
     font-size: 11px;
     opacity: 0.65;
+}
+
+.copyninja-update-dialog {
+    width: 340px;
+    spacing: 8px;
+}
+
+.copyninja-update-dialog-title {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.copyninja-update-dialog-body {
+    font-size: 11px;
+    opacity: 0.78;
 }

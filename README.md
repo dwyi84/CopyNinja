@@ -70,10 +70,16 @@ cd CopyNinja
 ### Ubuntu / GNOME
 
 CopyNinja is also available as a native GNOME Shell 46 extension for Ubuntu
-24.04. It lives in the top bar, supports text and images, and stores history
-under `~/.local/share/copyninja/`.
+24.04. It lives in the top bar, supports text and images, includes in-app
+updates, and stores history under `~/.local/share/copyninja/`.
 
-See [linux/README.md](linux/README.md) for installation and usage.
+#### One-liner install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dwyi84/CopyNinja/ubuntu/linux/remote-install.sh | sh
+```
+
+See [linux/README.md](linux/README.md) for local installation, usage, and uninstall instructions.
 
 ## Usage
 
@@ -121,10 +127,20 @@ Sources/CopyNinja/
 
 ### Releases
 
+macOS (`main` branch) and Ubuntu (`ubuntu` branch) are versioned independently:
+
+#### macOS (`main`)
+
 1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Resources/Info.plist`, then run `./build.sh`.
 2. Zip the bundle: `ditto -c -k --sequesterRsrc --keepParent dist/CopyNinja.app dist/CopyNinja-<version>.zip`.
-3. Commit, tag `v<version>`, and push; create the GitHub release with the zip asset.
+3. Commit on `main`, tag `v<version>`, and push; create the GitHub release with the zip asset.
 4. Point the Homebrew tap at the new build: `Scripts/update_cask.sh <version>`, then commit/push [dwyi84/homebrew-tap](https://github.com/dwyi84/homebrew-tap).
+
+#### Ubuntu (`ubuntu`)
+
+1. Bump `"version-name"` in `linux/extension/copyninja@melissasoft/metadata.json` (and `LINUX_FALLBACK_VERSION` in `linux/extension/copyninja@melissasoft/version.js`).
+2. Run `make -C linux check` and `make -C linux pack`.
+3. Commit and push to `ubuntu` (or optionally tag `linux-v<version>` for a GitHub release without affecting macOS `v*` updates).
 
 ## License
 

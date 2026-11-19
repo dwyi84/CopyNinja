@@ -64,8 +64,6 @@ export class ClipboardCapture {
                     return;
                 }
 
-                if (this._settings.get_boolean('private-mode'))
-                    return;
                 if (Main.sessionMode?.isLocked)
                     return;
 

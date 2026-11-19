@@ -16,6 +16,12 @@ import {
     quickSlotLabel,
 } from '../extension/copyninja@melissasoft/format.js';
 import {HistoryStorage} from '../extension/copyninja@melissasoft/storage.js';
+import {
+    isNewerVersion,
+    parseLinuxTagVersion,
+    parseMetadataVersion,
+    pickLatestLinuxRelease,
+} from '../extension/copyninja@melissasoft/version.js';
 
 let failures = 0;
 
@@ -212,6 +218,58 @@ test('format helpers', () => {
     assert(quickSlotLabel(0) === '1', 'slot label 0');
     assert(quickSlotLabel(9) === '0', 'slot label 9');
     assert(quickSlotLabel(10) === null, 'slot label 10');
+});
+
+test('version: isNewerVersion compares semver cleanly', () => {
+    assert(isNewerVersion('0.4.2', '0.4.1'), 'patch bump');
+    assert(isNewerVersion('0.5.0', '0.4.9'), 'minor bump');
+    assert(isNewerVersion('1.0.0', '0.9.9'), 'major bump');
+    assert(isNewerVersion('v0.4.2', '0.4.1'), 'v prefix');
+    assert(isNewerVersion('0.4.1', '0.4'), '3-segment vs 2-segment');
+    assert(!isNewerVersion('0.4.1', '0.4.1'), 'equal versions');
+    assert(!isNewerVersion('0.4', '0.4.0'), 'equal 2-segment vs 3-segment');
+    assert(!isNewerVersion('0.3.2', '0.4.1'), 'downgrade');
+    assert(!isNewerVersion('', '0.4.1'), 'empty remote');
+});
+
+test('version: parseLinuxTagVersion accepts only linux/ubuntu tags', () => {
+    assert(parseLinuxTagVersion('linux-v0.4.2') === '0.4.2', 'linux-v tag');
+    assert(parseLinuxTagVersion('ubuntu-v0.5.0') === '0.5.0', 'ubuntu-v tag');
+    assert(parseLinuxTagVersion('linux-0.4.2') === '0.4.2', 'linux numeric tag');
+    assert(parseLinuxTagVersion('LINUX-V1.2.3') === '1.2.3', 'uppercase tag');
+    assert(parseLinuxTagVersion('v0.3.2') === null, 'macOS v tag must be ignored');
+    assert(parseLinuxTagVersion('v0.9.0') === null, 'higher macOS v tag must be ignored');
+    assert(parseLinuxTagVersion('0.5.0') === null, 'unprefixed tag must be ignored');
+    assert(parseLinuxTagVersion('macos-v0.5.0') === null, 'macOS prefix must be ignored');
+    assert(parseLinuxTagVersion('linux-beta') === null, 'non-numeric tag must be ignored');
+});
+
+test('version: parseMetadataVersion validates metadata.json version-name', () => {
+    assert(parseMetadataVersion({'version-name': '0.4.1'}) === '0.4.1', 'valid version');
+    assert(parseMetadataVersion({'version-name': 'v0.4.2'}) === '0.4.2', 'prefixed version');
+    assert(parseMetadataVersion({'version-name': ''}) === null, 'empty version');
+    assert(parseMetadataVersion({'version-name': 'dev'}) === null, 'non-numeric version');
+    assert(parseMetadataVersion(null) === null, 'null metadata');
+});
+
+test('version: pickLatestLinuxRelease skips drafts, prereleases, and macOS releases', () => {
+    const macOnly = [
+        {tag_name: 'v0.3.2', html_url: 'https://example.com/mac-0.3.2'},
+        {tag_name: 'v0.9.0', html_url: 'https://example.com/mac-0.9.0'},
+        {tag_name: 'macos-v1.0.0', html_url: 'https://example.com/mac-1.0.0'},
+    ];
+    assert(pickLatestLinuxRelease(macOnly) === null, 'macOS-only releases return null');
+
+    const mixed = [
+        {tag_name: 'v0.9.9', html_url: 'https://example.com/mac'},
+        {tag_name: 'linux-v0.4.2', html_url: 'https://example.com/l1'},
+        {tag_name: 'linux-v0.9.0', draft: true, html_url: 'https://example.com/draft'},
+        {tag_name: 'ubuntu-v0.8.0', prerelease: true, html_url: 'https://example.com/pre'},
+        {tag_name: 'ubuntu-v0.4.5', html_url: 'https://example.com/l2'},
+    ];
+    const picked = pickLatestLinuxRelease(mixed);
+    assert(picked?.version === '0.4.5', 'highest stable linux/ubuntu release picked');
+    assert(picked?.ref === 'ubuntu-v0.4.5', 'keeps original release tag ref');
 });
 
 const loop = new GLib.MainLoop(null, false);

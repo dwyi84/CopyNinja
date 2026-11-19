@@ -23,8 +23,19 @@ const CATALOG = {
         'Preview': 'Preview',
         'Close': 'Close',
         'Settings': 'Settings',
-        'Private mode': 'Private mode',
-        'Private mode pauses clipboard capture.': 'Private mode pauses clipboard capture.',
+        'Check for Updates': 'Check for Updates',
+        'Checking…': 'Checking…',
+        'Updating…': 'Updating…',
+        'Update': 'Update',
+        '✓ Up to date': '✓ Up to date',
+        '✓ Updated': '✓ Updated',
+        'Check failed': 'Check failed',
+        'Later': 'Later',
+        'Update Now': 'Update Now',
+        'Restart Now': 'Restart Now',
+        'Failed to check for updates.': 'Failed to check for updates.',
+        'Failed to start update installer.': 'Failed to start update installer.',
+        'Failed to install update.': 'Failed to install update.',
         'Could not copy this item.': 'Could not copy this item.',
         'Image unavailable': 'Image unavailable',
         'Image': 'Image',
@@ -46,6 +57,7 @@ const CATALOG = {
         'Open data folder': 'Open data folder',
         'About': 'About',
         'Version': 'Version',
+        'GNOME Shell extension · Ubuntu 24.04+': 'GNOME Shell extension · Ubuntu 24.04+',
         'License': 'License',
         'GitHub': 'GitHub',
         'Clipboard history stays on this device.': 'Clipboard history stays on this device.',
@@ -72,8 +84,19 @@ const CATALOG = {
         'Preview': '미리보기',
         'Close': '닫기',
         'Settings': '설정',
-        'Private mode': '프라이빗 모드',
-        'Private mode pauses clipboard capture.': '프라이빗 모드에서는 클립보드 수집을 멈춥니다.',
+        'Check for Updates': '업데이트 확인',
+        'Checking…': '확인 중…',
+        'Updating…': '설치 중…',
+        'Update': '업데이트',
+        '✓ Up to date': '✓ 최신 버전',
+        '✓ Updated': '✓ 업데이트됨',
+        'Check failed': '확인 실패',
+        'Later': '나중에',
+        'Update Now': '지금 업데이트',
+        'Restart Now': '지금 재시작',
+        'Failed to check for updates.': '업데이트 확인에 실패했습니다.',
+        'Failed to start update installer.': '업데이트 실행에 실패했습니다.',
+        'Failed to install update.': '업데이트 설치에 실패했습니다.',
         'Could not copy this item.': '이 항목을 복사하지 못했습니다.',
         'Image unavailable': '이미지를 불러올 수 없습니다',
         'Image': '이미지',
@@ -95,6 +118,7 @@ const CATALOG = {
         'Open data folder': '데이터 폴더 열기',
         'About': '정보',
         'Version': '버전',
+        'GNOME Shell extension · Ubuntu 24.04+': 'GNOME Shell 확장 · Ubuntu 24.04+',
         'License': '라이선스',
         'GitHub': 'GitHub',
         'Clipboard history stays on this device.': '클립보드 기록은 이 기기에만 저장됩니다.',
@@ -108,6 +132,10 @@ const CATALOG = {
 export function getLocale() {
     const names = GLib.get_language_names() ?? [];
     return names.some(name => name.toLowerCase().startsWith('ko')) ? 'ko' : 'en';
+}
+
+export function t(ko, en) {
+    return getLocale() === 'ko' ? ko : en;
 }
 
 export function _(text) {
