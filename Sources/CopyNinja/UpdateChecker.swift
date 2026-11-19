@@ -22,15 +22,21 @@ final class UpdateChecker: ObservableObject {
         case failed
     }
 
+    private enum FetchResult {
+        case found(ReleaseInfo)
+        case none
+        case failed
+    }
+
     static let repoOwner = "dwyi84"
     static let repoName = "CopyNinja"
     static let currentVersion =
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.3.1"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.3.2"
 
     @Published private(set) var updateState: UpdateState = .idle
 
     private static let apiURL = URL(
-        string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/latest"
+        string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases?per_page=50"
     )!
 
     var isBusy: Bool { updateState == .checking || updateState == .downloading }
@@ -43,14 +49,13 @@ final class UpdateChecker: ObservableObject {
         updateState = .checking
         Task { [weak self] in
             guard let self else { return }
-            if let release = await Self.fetchLatestRelease() {
-                if Self.isNewer(release.version) {
-                    updateState = .available(release: release)
-                } else {
-                    updateState = .upToDate
-                    scheduleIdleReset()
-                }
-            } else {
+            switch await Self.fetchLatestRelease() {
+            case .found(let release) where Self.isNewer(release.version) && release.assetURL != nil:
+                updateState = .available(release: release)
+            case .found, .none:
+                updateState = .upToDate
+                scheduleIdleReset()
+            case .failed:
                 updateState = .failed
                 scheduleIdleReset()
             }
@@ -64,16 +69,15 @@ final class UpdateChecker: ObservableObject {
         updateState = .checking
         Task { [weak self] in
             guard let self else { return }
-            if let release = await Self.fetchLatestRelease() {
-                if Self.isNewer(release.version) {
-                    updateState = .available(release: release)
-                    presentUpdateConfirmation()
-                } else {
-                    updateState = .upToDate
-                    scheduleIdleReset()
-                    Self.presentUpToDateAlert()
-                }
-            } else {
+            switch await Self.fetchLatestRelease() {
+            case .found(let release) where Self.isNewer(release.version) && release.assetURL != nil:
+                updateState = .available(release: release)
+                presentUpdateConfirmation()
+            case .found, .none:
+                updateState = .upToDate
+                scheduleIdleReset()
+                Self.presentUpToDateAlert()
+            case .failed:
                 updateState = .failed
                 scheduleIdleReset()
                 Self.presentFailedAlert()
@@ -129,7 +133,7 @@ final class UpdateChecker: ObservableObject {
 
     // MARK: - GitHub Releases plumbing (mirrors LookHere)
 
-    private static func fetchLatestRelease() async -> ReleaseInfo? {
+    private static func fetchLatestRelease() async -> FetchResult {
         var request = URLRequest(url: apiURL)
         request.setValue("CopyNinja/\(currentVersion)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 8
@@ -137,25 +141,78 @@ final class UpdateChecker: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return nil
+                return .failed
             }
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let rawTag = json?["tag_name"] as? String,
-                  let html = json?["html_url"] as? String,
-                  let url = URL(string: html) else {
-                return nil
+            guard let releases = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                return .failed
             }
-            // Prefer the .zip release asset for the in-app update flow.
-            let assetURL = (json?["assets"] as? [[String: Any]])?
-                .compactMap { $0["browser_download_url"] as? String }
-                .compactMap(URL.init(string:))
-                .first { $0.pathExtension == "zip" }
-            // Store the version without the "v" tag prefix — the UI adds it.
-            let version = rawTag.hasPrefix("v") ? String(rawTag.dropFirst()) : rawTag
-            return ReleaseInfo(version: version, htmlURL: url, assetURL: assetURL)
+
+            var best: ReleaseInfo?
+            for json in releases {
+                guard let candidate = parseMacOSRelease(from: json) else { continue }
+                if let currentBest = best {
+                    if candidate.version.compare(currentBest.version, options: .numeric) == .orderedDescending {
+                        best = candidate
+                    }
+                } else {
+                    best = candidate
+                }
+            }
+            if let best {
+                return .found(best)
+            }
+            return .none
         } catch {
+            return .failed
+        }
+    }
+
+    private static func parseMacOSRelease(from json: [String: Any]) -> ReleaseInfo? {
+        if (json["draft"] as? Bool) == true || (json["prerelease"] as? Bool) == true {
             return nil
         }
+        guard let rawTag = json["tag_name"] as? String,
+              let html = json["html_url"] as? String,
+              let url = URL(string: html) else {
+            return nil
+        }
+
+        let trimmedTag = rawTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowerTag = trimmedTag.lowercased()
+        if lowerTag.hasPrefix("linux") || lowerTag.hasPrefix("ubuntu") {
+            return nil
+        }
+
+        var version = trimmedTag
+        if lowerTag.hasPrefix("macos-") {
+            version = String(version.dropFirst("macos-".count))
+        }
+        if version.hasPrefix("v") || version.hasPrefix("V") {
+            version = String(version.dropFirst())
+        }
+        guard !version.isEmpty else { return nil }
+
+        // Prefer the macOS .zip release asset and ignore Linux/Ubuntu extension bundles.
+        let assetURL = (json["assets"] as? [[String: Any]])?
+            .compactMap { asset -> URL? in
+                guard let urlString = asset["browser_download_url"] as? String,
+                      let candidateURL = URL(string: urlString) else {
+                    return nil
+                }
+                let name = ((asset["name"] as? String) ?? candidateURL.lastPathComponent).lowercased()
+                guard name.hasSuffix(".zip"),
+                      name.hasPrefix("copyninja"),
+                      !name.contains("shell-extension"),
+                      !name.contains("linux"),
+                      !name.contains("ubuntu") else {
+                    return nil
+                }
+                return candidateURL
+            }
+            .first
+
+        guard let assetURL else { return nil }
+        return ReleaseInfo(version: version, htmlURL: url, assetURL: assetURL)
     }
 
     static func isNewer(_ version: String) -> Bool {
