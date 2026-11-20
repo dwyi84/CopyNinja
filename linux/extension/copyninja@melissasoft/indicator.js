@@ -23,6 +23,9 @@ const Cairo = imports.gi.cairo;
 
 const PANEL_ICON_SIZE = 18;
 const POPUP_WIDTH = 360;
+const INITIAL_VISIBLE_ROWS = 30;
+const LOAD_MORE_BATCH_SIZE = 30;
+const SCROLL_LOAD_THRESHOLD_PX = 120;
 const QUICK_KEYS = {
     [Clutter.KEY_1]: 1,
     [Clutter.KEY_2]: 2,
@@ -101,9 +104,16 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         });
 
         this._rows = [];
+        this._filteredItems = [];
+        this._renderedCount = 0;
+        this._listDirty = true;
         this._selectedIndex = 0;
         this._searchTimeoutId = 0;
         this._ensureVisibleId = 0;
+        this._scrollLoadId = 0;
+        this._idleRefreshId = 0;
+        this._scrollAdjustment = null;
+        this._scrollAdjustmentId = 0;
         this._lastSearchQuery = '';
         this._previewDialog = null;
         this._confirmDialog = null;
@@ -371,6 +381,13 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         const section = new PopupMenu.PopupMenuSection();
         section.actor.add_child(this._scroll);
         this.menu.addMenuItem(section);
+
+        const adjustment = this._scroll.vadjustment ?? this._scroll.vscroll?.adjustment;
+        if (adjustment) {
+            this._scrollAdjustment = adjustment;
+            this._scrollAdjustmentId = adjustment.connect('notify::value',
+                () => this._maybeLoadMoreOnScroll());
+        }
     }
 
     _buildFooter() {
@@ -415,7 +432,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
                 .flatMap(item => [item.image, item.thumb])
                 .filter(Boolean);
             this._storage.pruneOrphans(referenced);
-            this._refresh();
+            this._markListDirty({immediate: true});
         } catch (error) {
             console.warn(`CopyNinja: could not initialise history — ${error.message}`);
         } finally {
@@ -428,7 +445,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             const removed = this._store.setLimit(this._settings.get_int('history-limit'));
             this._storage.save(this._store.items);
             this._deleteItems(removed);
-            this._refresh();
+            this._markListDirty({immediate: this.menu.isOpen});
         }));
 
         this._settingsIds.push(this._settings.connect('changed::clear-request',
@@ -436,10 +453,17 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _opened() {
+        const hadSearch = this._searchQuery().length > 0 || this._lastSearchQuery.length > 0;
         this._lastSearchQuery = '';
-        this._searchEntry.set_text('');
+        if (this._searchEntry.get_text().length > 0)
+            this._searchEntry.set_text('');
+
         this._selectedIndex = 0;
-        this._refresh();
+        if (this._listDirty || hadSearch)
+            this._refresh();
+        else
+            this._applySelection();
+
         this._syncUpdateButton();
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
@@ -486,28 +510,94 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
     // -------------------------------------------------------------------- list
 
+    _markListDirty({immediate = false} = {}) {
+        this._listDirty = true;
+
+        if (immediate) {
+            if (this._idleRefreshId) {
+                GLib.source_remove(this._idleRefreshId);
+                this._idleRefreshId = 0;
+            }
+            this._refresh();
+            return;
+        }
+
+        if (!this._idleRefreshId) {
+            this._idleRefreshId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
+                this._idleRefreshId = 0;
+                if (this._listDirty)
+                    this._refresh();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
+    }
+
     _refresh() {
         if (!this._listSection)
             return;
+
+        if (this._idleRefreshId) {
+            GLib.source_remove(this._idleRefreshId);
+            this._idleRefreshId = 0;
+        }
+        if (this._scrollLoadId) {
+            GLib.source_remove(this._scrollLoadId);
+            this._scrollLoadId = 0;
+        }
 
         const query = this._searchQuery();
         const items = this._store.filtered(query);
 
         this._clearList();
         this._rows = [];
+        this._filteredItems = items;
+        this._renderedCount = 0;
 
         if (items.length === 0) {
             this._addEmptyItem(query);
             this._selectedIndex = 0;
         } else {
-            for (let index = 0; index < items.length; index++)
+            const initialEnd = Math.min(items.length, INITIAL_VISIBLE_ROWS);
+            for (let index = 0; index < initialEnd; index++)
                 this._addRow(items[index], index);
+            this._renderedCount = initialEnd;
             this._selectedIndex = Math.max(0,
-                Math.min(this._selectedIndex, items.length - 1));
+                Math.min(this._selectedIndex, this._rows.length - 1));
         }
 
+        this._listDirty = false;
         this._applySelection();
         this._updateClearButton();
+    }
+
+    _maybeLoadMoreOnScroll() {
+        if (!this.menu?.isOpen || this._scrollLoadId)
+            return;
+        if (this._renderedCount >= this._filteredItems.length)
+            return;
+
+        const adjustment = this._scrollAdjustment;
+        if (!adjustment)
+            return;
+
+        if (adjustment.value + adjustment.page_size < adjustment.upper - SCROLL_LOAD_THRESHOLD_PX)
+            return;
+
+        this._scrollLoadId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._scrollLoadId = 0;
+            this._appendNextBatch();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _appendNextBatch(count = LOAD_MORE_BATCH_SIZE) {
+        if (!this._listSection || this._renderedCount >= this._filteredItems.length)
+            return;
+
+        const nextEnd = Math.min(this._filteredItems.length, this._renderedCount + count);
+        for (let index = this._renderedCount; index < nextEnd; index++)
+            this._addRow(this._filteredItems[index], index);
+        this._renderedCount = nextEnd;
     }
 
     _clearList() {
@@ -720,6 +810,8 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             this._select(0);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_End:
+            if (this._renderedCount < this._filteredItems.length)
+                this._appendNextBatch(this._filteredItems.length - this._renderedCount);
             this._select(this._rows.length - 1);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Return:
@@ -738,6 +830,8 @@ class CopyNinjaIndicator extends PanelMenu.Button {
     }
 
     _select(index) {
+        if (index >= this._rows.length && this._renderedCount < this._filteredItems.length)
+            this._appendNextBatch(Math.max(LOAD_MORE_BATCH_SIZE, index - this._rows.length + 1));
         if (this._rows.length === 0)
             return;
         this._selectedIndex = Math.max(0, Math.min(index, this._rows.length - 1));
@@ -777,6 +871,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
 
             this._store.promote(entry);
             this._storage.save(this._store.items);
+            this._markListDirty();
 
             if (this._previewDialog)
                 this._previewDialog.close();
@@ -903,7 +998,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         this._store.clear();
         await this._storage.clear();
         this._clipboard.set_text(St.ClipboardType.CLIPBOARD, '');
-        this._refresh();
+        this._markListDirty({immediate: true});
     }
 
     // -------------------------------------------------------------------- capture
@@ -952,8 +1047,7 @@ class CopyNinjaIndicator extends PanelMenu.Button {
         this._storage.save(this._store.items);
         this._deleteItems(result.removed);
 
-        if (this.menu.isOpen)
-            this._refresh();
+        this._markListDirty({immediate: this.menu.isOpen});
         this._updateClearButton();
         return result;
     }
@@ -981,6 +1075,19 @@ class CopyNinjaIndicator extends PanelMenu.Button {
             GLib.source_remove(this._ensureVisibleId);
             this._ensureVisibleId = 0;
         }
+        if (this._scrollLoadId) {
+            GLib.source_remove(this._scrollLoadId);
+            this._scrollLoadId = 0;
+        }
+        if (this._idleRefreshId) {
+            GLib.source_remove(this._idleRefreshId);
+            this._idleRefreshId = 0;
+        }
+        if (this._scrollAdjustment && this._scrollAdjustmentId) {
+            this._scrollAdjustment.disconnect(this._scrollAdjustmentId);
+            this._scrollAdjustmentId = 0;
+        }
+        this._scrollAdjustment = null;
 
         for (const id of this._settingsIds)
             this._settings.disconnect(id);
